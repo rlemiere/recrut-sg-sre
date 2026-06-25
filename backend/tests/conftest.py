@@ -25,5 +25,7 @@ async def client(mock_session: MagicMock) -> AsyncClient:
     test_app.include_router(router)
     test_app.dependency_overrides[get_session] = lambda: mock_session
 
-    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as c:
+    async with AsyncClient(
+        transport=ASGITransport(app=test_app), base_url="http://test"
+    ) as c:
         yield c

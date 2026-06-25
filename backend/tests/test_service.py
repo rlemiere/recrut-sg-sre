@@ -22,7 +22,10 @@ def test_shorten_creates_link_when_not_found():
 def test_shorten_skips_create_when_link_already_exists():
     session = MagicMock()
     with (
-        patch("app.service.repository.get_link", return_value=Link(id="abc12345", url="https://example.com")),
+        patch(
+            "app.service.repository.get_link",
+            return_value=Link(id="abc12345", url="https://example.com"),
+        ),
         patch("app.service.repository.create_link") as mock_create,
     ):
         service.shorten(session, "https://example.com")
@@ -46,7 +49,9 @@ def test_shorten_raises_on_empty_string():
 
 
 def test_make_link_id_is_deterministic():
-    assert service._make_link_id("https://example.com") == service._make_link_id("https://example.com")
+    assert service._make_link_id("https://example.com") == service._make_link_id(
+        "https://example.com"
+    )
 
 
 def test_make_link_id_returns_eight_chars():
@@ -54,7 +59,9 @@ def test_make_link_id_returns_eight_chars():
 
 
 def test_make_link_id_differs_for_different_urls():
-    assert service._make_link_id("https://a.com") != service._make_link_id("https://b.com")
+    assert service._make_link_id("https://a.com") != service._make_link_id(
+        "https://b.com"
+    )
 
 
 def test_resolve_returns_url_when_link_exists():

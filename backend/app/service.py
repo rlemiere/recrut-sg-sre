@@ -22,7 +22,9 @@ def _make_link_id(url: str) -> str:
 def _validate_url(url: str) -> None:
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
-        raise ValueError(f"Invalid URL '{url}': must use http or https scheme with a valid host")
+        raise ValueError(
+            f"Invalid URL '{url}': must use http or https scheme with a valid host"
+        )
 
 
 def shorten(session: Session, url: str) -> str:
