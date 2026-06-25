@@ -14,24 +14,24 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ShortenRequest'
+              $ref: "#/components/schemas/ShortenRequest"
             example:
               url: https://example.com
       responses:
-        '201':
+        "201":
           description: Link successfully shortened
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ShortenResponse'
+                $ref: "#/components/schemas/ShortenResponse"
               example:
                 id: aB3kR7mX
-        '422':
+        "422":
           description: Invalid or malformed URL
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorDetail'
+                $ref: "#/components/schemas/ErrorDetail"
               example:
                 detail: "Invalid URL 'not-a-url': must use http or https scheme with a valid host"
 
@@ -50,7 +50,7 @@ paths:
             maxLength: 8
             example: aB3kR7mX
       responses:
-        '302':
+        "302":
           description: Redirect to the original URL
           headers:
             Location:
@@ -58,12 +58,12 @@ paths:
               schema:
                 type: string
                 format: uri
-        '404':
+        "404":
           description: Link not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorDetail'
+                $ref: "#/components/schemas/ErrorDetail"
               example:
                 detail: Link not found
 

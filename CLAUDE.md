@@ -63,14 +63,14 @@ Python 3.12 · uv · FastAPI (sync) · SQLAlchemy 2.0 (sync) · psycopg3 (`psyco
 
 5-layer separation inside `backend/app/`:
 
-| File | Role |
-|---|---|
-| `config.py` | `Settings` via pydantic-settings; assembles the DB URL from individual env vars |
-| `database.py` | Sync engine + `get_session()` FastAPI dependency |
-| `models.py` | `Link` ORM model: `id` (PK, 8-char), `url`, `created_at` (indexed, server default) |
-| `repository.py` | `get_link`, `create_link` — pure DB operations |
-| `service.py` | `_make_link_id` (MD5 → base62 → 8 chars), `_validate_url`, `shorten`, `resolve` |
-| `router.py` | `POST /links` (201/422), `GET /l/{link_id}` (302/404) |
+| File            | Role                                                                               |
+| --------------- | ---------------------------------------------------------------------------------- |
+| `config.py`     | `Settings` via pydantic-settings; assembles the DB URL from individual env vars    |
+| `database.py`   | Sync engine + `get_session()` FastAPI dependency                                   |
+| `models.py`     | `Link` ORM model: `id` (PK, 8-char), `url`, `created_at` (indexed, server default) |
+| `repository.py` | `get_link`, `create_link` — pure DB operations                                     |
+| `service.py`    | `_make_link_id` (MD5 → base62 → 8 chars), `_validate_url`, `shorten`, `resolve`    |
+| `router.py`     | `POST /links` (201/422), `GET /l/{link_id}` (302/404)                              |
 
 ### Configuration
 

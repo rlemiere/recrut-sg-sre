@@ -4,10 +4,10 @@ REST API that shortens URLs and redirects users to the original destination.
 
 ## Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/links` | Accepts a URL in the request body, returns an 8-character short ID |
-| `GET` | `/l/{id}` | Redirects (`302`) to the original URL, or returns `404` if the ID is unknown |
+| Method | Path      | Description                                                                  |
+| ------ | --------- | ---------------------------------------------------------------------------- |
+| `POST` | `/links`  | Accepts a URL in the request body, returns an 8-character short ID           |
+| `GET`  | `/l/{id}` | Redirects (`302`) to the original URL, or returns `404` if the ID is unknown |
 
 ### POST /links
 
@@ -36,13 +36,13 @@ Same URL always produces the same ID. Storing it twice is a no-op.
 
 All variables can be set in a `.env` file at the root of the `backend/` folder or passed directly as environment variables.
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `DB_HOST` | string | `localhost` | PostgreSQL host |
-| `DB_PORT` | integer | `5432` | PostgreSQL port (optional) |
-| `DB_USERNAME` | string | `postgres` | Database user |
-| `DB_PASSWORD` | string | `postgres` | Database password |
-| `DB_NAME` | string | `urlshortener` | Database name |
+| Variable      | Type    | Default        | Description                |
+| ------------- | ------- | -------------- | -------------------------- |
+| `DB_HOST`     | string  | `localhost`    | PostgreSQL host            |
+| `DB_PORT`     | integer | `5432`         | PostgreSQL port (optional) |
+| `DB_USERNAME` | string  | `postgres`     | Database user              |
+| `DB_PASSWORD` | string  | `postgres`     | Database password          |
+| `DB_NAME`     | string  | `urlshortener` | Database name              |
 
 The application assembles the connection URL from these values at startup — no `DATABASE_URL` variable is used.
 
