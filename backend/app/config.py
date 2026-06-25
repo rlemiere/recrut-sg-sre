@@ -3,6 +3,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    cors_origins: list[str] = ["*"]
+
     db_host: str = "localhost"
     db_port: int = 5432
     db_username: str = "postgres"
