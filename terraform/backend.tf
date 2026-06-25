@@ -149,12 +149,7 @@ module "ecs_cluster" {
   }
 }
 
-# ─── CloudWatch + SSM ──────────────────────────────────────────────────────────
-
-resource "aws_cloudwatch_log_group" "backend" {
-  name              = "/ecs/${var.prefix}/backend"
-  retention_in_days = 14
-}
+# ─── SSM ───────────────────────────────────────────────────────────────────────
 
 resource "aws_ssm_parameter" "db_password" {
   name  = "/${var.prefix}/db_password"
@@ -162,167 +157,101 @@ resource "aws_ssm_parameter" "db_password" {
   value = random_password.db_password.result
 }
 
-# ─── IAM ───────────────────────────────────────────────────────────────────────
-
-data "aws_iam_policy_document" "ecs_assume" {
-  statement {
-    actions = ["sts:AssumeRole"]
-    principals {
-      type        = "Service"
-      identifiers = ["ecs-tasks.amazonaws.com"]
-    }
-  }
-}
-
-resource "aws_iam_role" "ecs_execution" {
-  name               = "${var.prefix}-ecs-execution"
-  assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
-}
-
-resource "aws_iam_role_policy_attachment" "ecs_execution_managed" {
-  role       = aws_iam_role.ecs_execution.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
-
-resource "aws_iam_role_policy" "ecs_execution_ssm" {
-  role = aws_iam_role.ecs_execution.id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["ssm:GetParameters", "kms:Decrypt"]
-      Resource = [aws_ssm_parameter.db_password.arn]
-    }]
-  })
-}
-
-resource "aws_iam_role" "ecs_task" {
-  name               = "${var.prefix}-ecs-task"
-  assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
-}
-
-# ─── ECS Task Definition ───────────────────────────────────────────────────────
-
-resource "aws_ecs_task_definition" "backend" {
-  family                   = "${var.prefix}-backend"
-  requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  cpu                      = var.backend_cpu
-  memory                   = var.backend_memory
-  execution_role_arn       = aws_iam_role.ecs_execution.arn
-  task_role_arn            = aws_iam_role.ecs_task.arn
-
-  container_definitions = jsonencode([{
-    name      = "backend"
-    image     = "${var.backend_repository}:${var.backend_version}"
-    essential = true
-    portMappings = [{
-      containerPort = 8000
-      protocol      = "tcp"
-    }]
-    environment = [
-      { name = "DB_HOST", value = module.rds.db_instance_address },
-      { name = "DB_PORT", value = tostring(module.rds.db_instance_port) },
-      { name = "DB_USERNAME", value = "urlshortener" },
-      { name = "DB_NAME", value = "urlshortener" },
-      { name = "CORS_ORIGINS", value = "https://${local.frontend_domain}" },
-    ]
-    secrets = [{
-      name      = "DB_PASSWORD"
-      valueFrom = aws_ssm_parameter.db_password.arn
-    }]
-    logConfiguration = {
-      logDriver = "awslogs"
-      options = {
-        "awslogs-group"         = aws_cloudwatch_log_group.backend.name
-        "awslogs-region"        = var.aws_region
-        "awslogs-stream-prefix" = "backend"
-      }
-    }
-    healthCheck = {
-      command     = ["CMD-SHELL", "curl -f http://localhost:8000/docs || exit 1"]
-      interval    = 30
-      timeout     = 10
-      retries     = 3
-      startPeriod = 120
-    }
-  }])
-}
-
 # ─── ECS Service ───────────────────────────────────────────────────────────────
 
-resource "aws_ecs_service" "backend" {
-  name                              = "${var.prefix}-backend"
-  cluster                           = module.ecs_cluster.id
-  task_definition                   = aws_ecs_task_definition.backend.arn
+module "ecs_service" {
+  source  = "terraform-aws-modules/ecs/aws//modules/service"
+  version = "7.5.0"
+
+  name        = "${var.prefix}-backend"
+  cluster_arn = module.ecs_cluster.arn
+
+  cpu    = var.backend_cpu
+  memory = var.backend_memory
+
   desired_count                     = var.backend_desired_count
   health_check_grace_period_seconds = 120
 
-  capacity_provider_strategy {
-    capacity_provider = "FARGATE"
-    weight            = 100
-    base              = 1
+  capacity_provider_strategy = {
+    fargate = {
+      capacity_provider = "FARGATE"
+      weight            = 100
+      base              = 1
+    }
   }
 
-  network_configuration {
-    subnets          = module.vpc.public_subnets
-    security_groups  = [aws_security_group.ecs.id]
-    assign_public_ip = true
+  create_security_group = false
+  security_group_ids    = [aws_security_group.ecs.id]
+  subnet_ids            = module.vpc.public_subnets
+  assign_public_ip      = true
+
+  task_exec_ssm_param_arns = [aws_ssm_parameter.db_password.arn]
+
+  container_definitions = {
+    backend = {
+      image     = "${var.backend_repository}:${var.backend_version}"
+      essential = true
+
+      portMappings = [{
+        containerPort = 8000
+        protocol      = "tcp"
+      }]
+
+      environment = [
+        { name = "DB_HOST", value = module.rds.db_instance_address },
+        { name = "DB_PORT", value = tostring(module.rds.db_instance_port) },
+        { name = "DB_USERNAME", value = "urlshortener" },
+        { name = "DB_NAME", value = "urlshortener" },
+        { name = "CORS_ORIGINS", value = "https://${local.frontend_domain}" },
+      ]
+
+      secrets = [{
+        name      = "DB_PASSWORD"
+        valueFrom = aws_ssm_parameter.db_password.arn
+      }]
+
+      enable_cloudwatch_logging              = true
+      create_cloudwatch_log_group            = true
+      cloudwatch_log_group_retention_in_days = 14
+    }
   }
 
-  load_balancer {
-    target_group_arn = module.alb.target_groups["backend"].arn
-    container_name   = "backend"
-    container_port   = 8000
+  load_balancer = {
+    backend = {
+      target_group_arn = module.alb.target_groups["backend"].arn
+      container_name   = "backend"
+      container_port   = 8000
+    }
   }
 
-  lifecycle {
-    ignore_changes = [desired_count]
+  enable_autoscaling       = true
+  autoscaling_min_capacity = var.backend_min_capacity
+  autoscaling_max_capacity = var.backend_max_capacity
+
+  autoscaling_policies = {
+    cpu = {
+      policy_type = "TargetTrackingScaling"
+      target_tracking_scaling_policy_configuration = {
+        predefined_metric_specification = {
+          predefined_metric_type = "ECSServiceAverageCPUUtilization"
+        }
+        target_value       = 70.0
+        scale_out_cooldown = 60
+        scale_in_cooldown  = 300
+      }
+    }
+    memory = {
+      policy_type = "TargetTrackingScaling"
+      target_tracking_scaling_policy_configuration = {
+        predefined_metric_specification = {
+          predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+        }
+        target_value       = 80.0
+        scale_out_cooldown = 60
+        scale_in_cooldown  = 300
+      }
+    }
   }
 
   depends_on = [module.alb]
-}
-
-# ─── Autoscaling ───────────────────────────────────────────────────────────────
-
-resource "aws_appautoscaling_target" "ecs" {
-  resource_id        = "service/${module.ecs_cluster.name}/${aws_ecs_service.backend.name}"
-  scalable_dimension = "ecs:service:DesiredCount"
-  service_namespace  = "ecs"
-  min_capacity       = var.backend_min_capacity
-  max_capacity       = var.backend_max_capacity
-}
-
-resource "aws_appautoscaling_policy" "cpu" {
-  name               = "${var.prefix}-cpu-scaling"
-  policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.ecs.resource_id
-  scalable_dimension = aws_appautoscaling_target.ecs.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.ecs.service_namespace
-
-  target_tracking_scaling_policy_configuration {
-    predefined_metric_specification {
-      predefined_metric_type = "ECSServiceAverageCPUUtilization"
-    }
-    target_value       = 70.0
-    scale_out_cooldown = 60
-    scale_in_cooldown  = 300
-  }
-}
-
-resource "aws_appautoscaling_policy" "memory" {
-  name               = "${var.prefix}-memory-scaling"
-  policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.ecs.resource_id
-  scalable_dimension = aws_appautoscaling_target.ecs.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.ecs.service_namespace
-
-  target_tracking_scaling_policy_configuration {
-    predefined_metric_specification {
-      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
-    }
-    target_value       = 80.0
-    scale_out_cooldown = 60
-    scale_in_cooldown  = 300
-  }
 }

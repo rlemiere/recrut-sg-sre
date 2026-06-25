@@ -106,7 +106,9 @@ An ECS cluster must be deployed. It should support the following features :
 
 The backend is **fully implemented**. Frontend and terraform are done.
 
-The terraform infrastructure (`terraform/`) includes: VPC (private-only, no NAT/IGW) with VPC endpoints for ECR/CloudWatch/SSM, ACM certificates (regional for ALB, us-east-1 for CloudFront), S3 + CloudFront distribution with VPC Origin for the internal ALB, ECS Fargate cluster with autoscaling, internal ALB, RDS PostgreSQL 17 (db.t3.micro, single-AZ), Route53 records. DB password is auto-generated and stored in SSM Parameter Store.
+The terraform infrastructure (`terraform/`) includes: VPC (public subnets + database subnets, no private subnets), ACM certificates (regional for ALB, us-east-1 for CloudFront), S3 + CloudFront distribution pointing to a public internet-facing ALB, ECS Fargate cluster + service (via `terraform-aws-modules/ecs/aws//modules/service`) with autoscaling, public ALB with HTTP→HTTPS redirect, RDS PostgreSQL 17 (db.t3.micro, single-AZ), Route53 records. DB password is auto-generated and stored in SSM Parameter Store.
+
+ECS service was migrated from manual `aws_ecs_service` / `aws_ecs_task_definition` / IAM / autoscaling resources to the `terraform-aws-modules/ecs/aws//modules/service` submodule v7.5.0. Container-level healthcheck removed; ALB healthcheck with `health_check_grace_period_seconds = 120` is used instead.
 
 ### Stack
 
