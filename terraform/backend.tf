@@ -209,7 +209,7 @@ resource "aws_ecs_task_definition" "backend" {
 
   container_definitions = jsonencode([{
     name      = "backend"
-    image     = var.backend_image_uri
+    image     = "${var.backend_repository}:${var.backend_version}"
     essential = true
     portMappings = [{
       containerPort = 8000

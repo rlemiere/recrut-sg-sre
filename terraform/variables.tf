@@ -18,8 +18,13 @@ variable "dns_prefix" {
   type        = string
 }
 
-variable "backend_image_uri" {
-  description = "Full Docker image URI for the backend container"
+variable "backend_repository" {
+  description = "Docker image repository for the backend container (without tag)"
+  type        = string
+}
+
+variable "backend_version" {
+  description = "Docker image tag to deploy (e.g. git SHA)"
   type        = string
 }
 

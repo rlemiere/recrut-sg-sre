@@ -118,8 +118,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-backend, build-frontend]
     if: github.ref == 'refs/heads/main'
-    outputs:
-      image_uri: ${{ steps.export_uri.outputs.image_uri }}
     steps:
       - uses: actions/checkout@v4
 
@@ -144,9 +142,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Export image URI
-        id: export_uri
-        run: echo "image_uri=public.ecr.aws/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
   # ── Deploy (main branch only) ─────────────────────────────────────────────────
 
@@ -191,7 +186,7 @@ jobs:
         run: |
           terraform apply \
             -auto-approve \
-            -var "backend_image_uri=${{ needs.publish-backend.outputs.image_uri }}" \
+            -var "backend_version=${{ github.sha }}" \
             -var "frontend_version=${{ github.sha }}"
 
   # ── Infra plan (feature branches only) ───────────────────────────────────────

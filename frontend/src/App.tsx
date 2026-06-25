@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL ?? '';
 
 function validateUrl(input: string): string | null {
   if (!input.trim()) return "Please enter a URL.";
