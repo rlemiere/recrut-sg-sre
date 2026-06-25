@@ -1,5 +1,10 @@
 # CLAUDE.md
 
+## Global guidelines
+
+Every time you make a change, update the CLAUDE.md to include a very small
+text about what changed.
+
 ## Project layout
 
 This project is a url shortener website. It is composed of the following
@@ -49,11 +54,59 @@ The id of the link is created the following way :
 
 ## Infrastructure
 
+### Terraform guidelines
+
+You are a terraform expert using AWS. You must use provided aws modules from
+the official provider. Only write resources if necessary. Always ask if there
+is no existing aws module.
+
+The database node must be not highly available, as the focus is on the pricing
+for the RDS database.
+
+Since it will be a small project, there is no need to refactor all the resources
+in separate modules. Each kind of resource can be written in a dedicated
+terraform file like :
+
+- providers.tf for providers config
+
+- variables.tf for variables
+
+- backend.tf for backend resources.
+
+The RDS database must be deployed in a private network.
+
+The VPC and subnets must be setup by the project, follow the best security
+practices.
+
+### Resources to be deployed
+
+The infrastructure will feature the following resources :
+
+- An S3 bucket for the frontend page.
+
+- A cloudfront gateway leading to the s3 bucket to serve the frontend.
+
+- An ECS cluster to deploy the backend
+
+- An RDS postgres database.
+
+### The ECS Cluster for the backend
+
+An ECS cluster must be deployed. It should support the following features :
+
+- Container insights activated for the cluster.
+
+- Healthcheck on /docs endpoint of the container
+
+- Autoscaling based on memory and CPU.
+
 ---
 
 ## Backend — Current Status
 
-The backend is **fully implemented**. Frontend and terraform are not yet started.
+The backend is **fully implemented**. Frontend and terraform are done.
+
+The terraform infrastructure (`terraform/`) includes: VPC (private-only, no NAT/IGW) with VPC endpoints for ECR/CloudWatch/SSM, ACM certificates (regional for ALB, us-east-1 for CloudFront), S3 + CloudFront distribution with VPC Origin for the internal ALB, ECS Fargate cluster with autoscaling, internal ALB, RDS PostgreSQL 17 (db.t3.micro, single-AZ), Route53 records. DB password is auto-generated and stored in SSM Parameter Store.
 
 ### Stack
 
