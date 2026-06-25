@@ -15,6 +15,15 @@ resource "aws_security_group" "rds" {
   vpc_id = module.vpc.vpc_id
 }
 
+# ALB: accept HTTP from internet (redirected to HTTPS)
+resource "aws_vpc_security_group_ingress_rule" "alb_http" {
+  security_group_id = aws_security_group.alb.id
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 80
+  to_port           = 80
+  ip_protocol       = "tcp"
+}
+
 # ALB: accept HTTPS from internet (CloudFront + direct access)
 resource "aws_vpc_security_group_ingress_rule" "alb_https" {
   security_group_id = aws_security_group.alb.id
@@ -103,6 +112,15 @@ module "alb" {
       ssl_policy      = "ELBSecurityPolicy-TLS13-1-2-Res-2021-06"
       certificate_arn = module.acm_regional.acm_certificate_arn
       forward         = { target_group_key = "backend" }
+    }
+    http = {
+      port     = 80
+      protocol = "HTTP"
+      redirect = {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
     }
   }
 }

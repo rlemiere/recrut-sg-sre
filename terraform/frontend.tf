@@ -87,13 +87,6 @@ module "cloudfront" {
     ssl_support_method       = "sni-only"
     minimum_protocol_version = "TLSv1.2_2021"
   }
-
-  restrictions = {
-    geo_restriction = {
-      restriction_type = "none"
-      locations        = []
-    }
-  }
 }
 
 data "aws_iam_policy_document" "s3_cf" {
