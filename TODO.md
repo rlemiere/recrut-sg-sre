@@ -46,6 +46,10 @@ On feature branches, the CI runs `terraform plan` but the output is only visible
 
 The backend Docker image is built and pushed to ECR without any vulnerability scan. A CVE in the base image (`python:3.12-slim`) or in a Python dependency would reach production undetected. Trivy should scan the built image before the push step; the job should fail if high or critical vulnerabilities are found, giving the team a chance to update the base image or dependency before it is deployed.
 
+### Proper version tagging and tag-based deployments
+
+Docker images are currently tagged with the commit SHA (e.g. `abc1234`). While unique, SHA tags are opaque: looking at ECR or an ECS task definition gives no indication of what version is running, whether it is a release or a development build, or how it relates to other images. A semantic versioning strategy (`v1.2.3`) should be adopted using Git tags. On push of a `v*` tag, the CI pipeline should build the Docker image, tag it with both the version (`v1.2.3`) and `latest`, push to ECR, and then trigger the ECS deployment using that version tag. This makes the running version visible at a glance in ECS, ECR, and deployment logs, and ensures rollbacks are a matter of redeploying a known, named image rather than hunting for a SHA.
+
 ---
 
 ## Backend
