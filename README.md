@@ -26,14 +26,14 @@ Configure the following in **Settings → Secrets and Variables → Actions**.
 
 ### Secrets
 
-| Secret                  | Description                                                                     |
-| ----------------------- | ------------------------------------------------------------------------------- |
-| `AWS_ACCESS_KEY_ID`     | IAM access key                                                                  |
-| `AWS_SECRET_ACCESS_KEY` | IAM secret key                                                                  |
-| `ECR_REPOSITORY`        | Public ECR repo path: `<alias>/<name>`, e.g. `myalias/rlemiere-sg-backend`     |
-| `TF_BACKEND_BUCKET`     | S3 bucket holding the Terraform state                                           |
-| `TF_BACKEND_KEY`        | State file path, e.g. `rlemiere-sg/terraform.tfstate`                           |
-| `TF_BACKEND_REGION`     | Region of the state bucket, e.g. `eu-west-2`                                   |
+| Secret                  | Description                                                                |
+| ----------------------- | -------------------------------------------------------------------------- |
+| `AWS_ACCESS_KEY_ID`     | IAM access key                                                             |
+| `AWS_SECRET_ACCESS_KEY` | IAM secret key                                                             |
+| `ECR_REPOSITORY`        | Public ECR repo path: `<alias>/<name>`, e.g. `myalias/rlemiere-sg-backend` |
+| `TF_BACKEND_BUCKET`     | S3 bucket holding the Terraform state                                      |
+| `TF_BACKEND_KEY`        | State file path, e.g. `rlemiere-sg/terraform.tfstate`                      |
+| `TF_BACKEND_REGION`     | Region of the state bucket, e.g. `eu-west-2`                               |
 
 ### Variables
 

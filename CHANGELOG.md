@@ -9,6 +9,7 @@ All notable changes to this project are documented here.
 ## [2026-06-24] — CI/CD pipeline
 
 ### Added
+
 - GitHub Actions workflow (`.github/workflows/ci.yml`) with four stages on `main`:
   lint → build → publish → deploy; feature branches get lint + `terraform plan`
 - `ruff` added to backend dev dependencies so CI linting works outside Nix
@@ -22,6 +23,7 @@ All notable changes to this project are documented here.
 - CI documentation in `README.md` listing required secrets and variables
 
 ### Changed
+
 - Backend Docker image pushed to **public ECR** (`public.ecr.aws`) instead of private ECR;
   `amazon-ecr-login@v2` now uses `registry-type: public`
 - `ECR_REGISTRY` secret removed — registry host is always `public.ecr.aws`
@@ -30,6 +32,7 @@ All notable changes to this project are documented here.
 - `concurrency` group on workflow prevents concurrent `terraform apply` runs on `main`
 
 ### Fixed
+
 - Frontend URL fallback added to avoid broken API calls when `VITE_API_URL` is not set
 
 ---
@@ -37,6 +40,7 @@ All notable changes to this project are documented here.
 ## [2026-06-24] — Infrastructure
 
 ### Added
+
 - Terraform infrastructure: VPC with public and database subnets across two AZs
 - S3 bucket + CloudFront distribution for the frontend (OAC, SPA error routing)
 - ECS Fargate cluster with autoscaling (CPU + memory), ALB, container insights enabled
@@ -47,6 +51,7 @@ All notable changes to this project are documented here.
 - DB password auto-generated and stored in SSM Parameter Store
 
 ### Fixed
+
 - ECS moved to public subnets to avoid needing a NAT gateway
 - HTTPS redirect added on ALB and CloudFront
 - Missing ECS service resource added
@@ -56,6 +61,7 @@ All notable changes to this project are documented here.
 ## [2026-06-24] — Frontend
 
 ### Added
+
 - React 19 + TypeScript 5 + Vite 6 single-page app
 - URL input form: submits to `POST /links`, displays the returned short link
 - CORS support on the backend for the frontend origin
@@ -65,6 +71,7 @@ All notable changes to this project are documented here.
 ## [2026-06-24] — Backend
 
 ### Added
+
 - FastAPI URL shortener with two endpoints: `POST /links` and `GET /l/{id}`
 - Link ID algorithm: MD5 hash of URL → base62-encode bytes → truncate to 8 chars
 - SQLAlchemy 2.0 (sync) + psycopg3 ORM with `Link` model (`id`, `url`, `created_at`)
