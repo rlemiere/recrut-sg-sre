@@ -52,3 +52,15 @@ variable "backend_max_capacity" {
   type        = number
   default     = 4
 }
+
+variable "frontend_version" {
+  description = "Identifier used to trigger S3 sync and CloudFront invalidation (e.g. git SHA)"
+  type        = string
+  default     = ""
+}
+
+variable "frontend_dist_dir" {
+  description = "Path to the frontend dist folder, relative to the terraform directory"
+  type        = string
+  default     = "../frontend/dist"
+}

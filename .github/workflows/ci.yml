@@ -1,0 +1,231 @@
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - "**"
+
+concurrency:
+  group: ${{ github.ref == 'refs/heads/main' && 'deploy' || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+
+jobs:
+
+  # ── Lint ──────────────────────────────────────────────────────────────────────
+
+  lint-frontend:
+    name: Lint Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: TypeScript type check
+        run: yarn tsc --noEmit
+
+  lint-backend:
+    name: Lint Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+      - name: Run tests
+        run: uv run pytest
+
+  # ── Build (main branch only) ──────────────────────────────────────────────────
+
+  build-backend:
+    name: Build Backend Docker Image
+    runs-on: ubuntu-latest
+    needs: [lint-frontend, lint-backend]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: false
+          tags: ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    needs: [lint-frontend, lint-backend]
+    if: github.ref == 'refs/heads/main'
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build
+        run: yarn build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 1
+
+  # ── Publish (main branch only) ────────────────────────────────────────────────
+
+  publish-backend:
+    name: Push Backend Image to ECR
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]
+    if: github.ref == 'refs/heads/main'
+    outputs:
+      image_uri: ${{ steps.export_uri.outputs.image_uri }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Export image URI
+        id: export_uri
+        run: echo "image_uri=${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+  # ── Deploy (main branch only) ─────────────────────────────────────────────────
+
+  deploy:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    needs: [publish-backend]
+    if: github.ref == 'refs/heads/main'
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.14"
+
+      - name: Write backend config
+        run: |
+          cat <<EOF > backend.hcl
+          bucket = "${{ secrets.TF_BACKEND_BUCKET }}"
+          key    = "${{ secrets.TF_BACKEND_KEY }}"
+          region = "${{ secrets.TF_BACKEND_REGION }}"
+          EOF
+
+      - name: Terraform init
+        run: terraform init -backend-config=backend.hcl
+
+      - name: Terraform apply
+        run: |
+          terraform apply \
+            -auto-approve \
+            -var "backend_image_uri=${{ needs.publish-backend.outputs.image_uri }}" \
+            -var "frontend_version=${{ github.sha }}"
+
+  # ── Infra plan (feature branches only) ───────────────────────────────────────
+
+  plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    needs: [lint-frontend, lint-backend]
+    if: github.ref != 'refs/heads/main'
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.14"
+
+      - name: Write backend config
+        run: |
+          cat <<EOF > backend.hcl
+          bucket = "${{ secrets.TF_BACKEND_BUCKET }}"
+          key    = "${{ secrets.TF_BACKEND_KEY }}"
+          region = "${{ secrets.TF_BACKEND_REGION }}"
+          EOF
+
+      - name: Terraform init
+        run: terraform init -backend-config=backend.hcl
+
+      - name: Terraform plan
+        run: terraform plan

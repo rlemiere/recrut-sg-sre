@@ -109,3 +109,27 @@ resource "aws_s3_bucket_policy" "frontend_cf" {
   bucket = module.s3_frontend.s3_bucket_id
   policy = data.aws_iam_policy_document.s3_cf.json
 }
+
+action "aws_cloudfront_create_invalidation" "frontend" {
+  config {
+    distribution_id = module.cloudfront.cloudfront_distribution_id
+    paths           = ["/*"]
+  }
+}
+
+resource "terraform_data" "frontend_sync" {
+  triggers_replace = var.frontend_version
+
+  provisioner "local-exec" {
+    command = "aws s3 sync ${var.frontend_dist_dir} s3://${module.s3_frontend.s3_bucket_id}/ --delete --region ${var.aws_region}"
+  }
+
+  lifecycle {
+    action_trigger {
+      events  = [after_create]
+      actions = [action.aws_cloudfront_create_invalidation.frontend]
+    }
+  }
+
+  depends_on = [aws_s3_bucket_policy.frontend_cf]
+}
