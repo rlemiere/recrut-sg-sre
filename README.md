@@ -8,8 +8,28 @@ Paste a URL into the input field and submit. The backend returns a shortened lin
 
 ## Stack
 
-- **Frontend** — React (single page)
-- **Backend** — Python / FastAPI / PostgreSQL
+- **Frontend** - React (single page)
+- **Backend** - Python / FastAPI / PostgreSQL
+
+## Technical Choices
+
+All technology choices below are sized to the current scale of the product. Pricing trade-offs reflect a small deployment, not a hypothetical future load. Most technologies were also selected to stay as close as possible to open standards and avoid vendor lock-in.
+
+### Backend
+
+**Python / FastAPI + uv** - a standard, production-ready stack with minimal setup overhead. FastAPI is widely adopted, well-documented, and straightforward to deploy anywhere.
+
+### Frontend
+
+**React + TypeScript** - a standard, production-ready stack. React has broad ecosystem support; TypeScript catches errors early without adding runtime overhead.
+
+### Infrastructure
+
+**S3 + CloudFront** for the frontend - simple to set up and aggressively priced at small scale. Static assets served from the edge with no servers to manage.
+
+**ECS Fargate** for the backend - chosen over EKS on cost (no control-plane fee) and over Lambda to avoid vendor lock-in. ECS handles autoscaling for traffic bursts and can be replaced by a Kubernetes cluster with minimal migration effort.
+
+**RDS PostgreSQL** for storage - DynamoDB could lower the bill slightly, but PostgreSQL is an open standard: no proprietary query language or API to migrate away from. The instance is a single-AZ `db.t3.micro`, appropriate for the current product size.
 
 ## API
 

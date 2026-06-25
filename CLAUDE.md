@@ -102,6 +102,10 @@ An ECS cluster must be deployed. It should support the following features :
 
 ---
 
+## Recent changes
+
+- Added `## Technical Choices` section to `README.md` documenting backend, frontend, and infrastructure decisions with pricing and vendor lock-in rationale.
+
 ## Backend — Current Status
 
 The backend is **fully implemented**. Frontend and terraform are done.
