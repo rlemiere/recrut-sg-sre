@@ -98,9 +98,14 @@ module "alb" {
       target_type       = "ip"
       create_attachment = false
       health_check = {
-        enabled  = true
-        path     = "/docs"
-        protocol = "HTTP"
+        enabled             = true
+        path                = "/docs"
+        protocol            = "HTTP"
+        interval            = 30
+        timeout             = 10
+        healthy_threshold   = 2
+        unhealthy_threshold = 5
+        matcher             = "200"
       }
     }
   }
@@ -237,9 +242,9 @@ resource "aws_ecs_task_definition" "backend" {
     healthCheck = {
       command     = ["CMD-SHELL", "curl -f http://localhost:8000/docs || exit 1"]
       interval    = 30
-      timeout     = 5
+      timeout     = 10
       retries     = 3
-      startPeriod = 60
+      startPeriod = 120
     }
   }])
 }
@@ -247,10 +252,11 @@ resource "aws_ecs_task_definition" "backend" {
 # ─── ECS Service ───────────────────────────────────────────────────────────────
 
 resource "aws_ecs_service" "backend" {
-  name            = "${var.prefix}-backend"
-  cluster         = module.ecs_cluster.id
-  task_definition = aws_ecs_task_definition.backend.arn
-  desired_count   = var.backend_desired_count
+  name                              = "${var.prefix}-backend"
+  cluster                           = module.ecs_cluster.id
+  task_definition                   = aws_ecs_task_definition.backend.arn
+  desired_count                     = var.backend_desired_count
+  health_check_grace_period_seconds = 120
 
   capacity_provider_strategy {
     capacity_provider = "FARGATE"
