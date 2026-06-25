@@ -93,10 +93,10 @@ module "alb" {
 
   target_groups = {
     backend = {
-      protocol    = "HTTP"
-      port        = 8000
-      target_type = "ip"
-      target_id   = module.vpc.vpc_id
+      protocol          = "HTTP"
+      port              = 8000
+      target_type       = "ip"
+      create_attachment = false
       health_check = {
         enabled  = true
         path     = "/docs"
@@ -251,7 +251,12 @@ resource "aws_ecs_service" "backend" {
   cluster         = module.ecs_cluster.id
   task_definition = aws_ecs_task_definition.backend.arn
   desired_count   = var.backend_desired_count
-  launch_type     = "FARGATE"
+
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 100
+    base              = 1
+  }
 
   network_configuration {
     subnets          = module.vpc.public_subnets
