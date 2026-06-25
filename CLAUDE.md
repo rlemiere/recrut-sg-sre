@@ -48,3 +48,40 @@ The id of the link is created the following way :
 3. The base62 string is truncated to 8 chars.
 
 ## Infrastructure
+
+---
+
+## Backend — Current Status
+
+The backend is **fully implemented**. Frontend and terraform are not yet started.
+
+### Stack
+
+Python 3.12 · uv · FastAPI (sync) · SQLAlchemy 2.0 (sync) · psycopg3 (`psycopg[binary]`) · pydantic-settings
+
+### Architecture
+
+5-layer separation inside `backend/app/`:
+
+| File | Role |
+|---|---|
+| `config.py` | `Settings` via pydantic-settings; assembles the DB URL from individual env vars |
+| `database.py` | Sync engine + `get_session()` FastAPI dependency |
+| `models.py` | `Link` ORM model: `id` (PK, 8-char), `url`, `created_at` (indexed, server default) |
+| `repository.py` | `get_link`, `create_link` — pure DB operations |
+| `service.py` | `_make_link_id` (MD5 → base62 → 8 chars), `_validate_url`, `shorten`, `resolve` |
+| `router.py` | `POST /links` (201/422), `GET /l/{link_id}` (302/404) |
+
+### Configuration
+
+Env vars (`.env` or environment): `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME`
+
+### Infrastructure files
+
+- `docker-compose.yml` — postgres:17 + pgAdmin4 (host port 35432)
+- `Dockerfile` — multi-stage build: uv builder → python:3.12-slim runtime, non-root user
+
+### Other
+
+- `openapi.yaml` — OpenAPI 3.0.3 spec
+- `tests/` — 15 unit tests with mocking (pytest + pytest-asyncio), no real DB required
