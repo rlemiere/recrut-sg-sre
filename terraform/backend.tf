@@ -15,10 +15,10 @@ resource "aws_security_group" "rds" {
   vpc_id = module.vpc.vpc_id
 }
 
-# ALB: accept HTTPS from VPC CIDR (CloudFront VPC Origin creates ENIs here)
+# ALB: accept HTTPS from internet (CloudFront + direct access)
 resource "aws_vpc_security_group_ingress_rule" "alb_https" {
   security_group_id = aws_security_group.alb.id
-  cidr_ipv4         = module.vpc.vpc_cidr_block
+  cidr_ipv4         = "0.0.0.0/0"
   from_port         = 443
   to_port           = 443
   ip_protocol       = "tcp"
@@ -42,13 +42,13 @@ resource "aws_vpc_security_group_ingress_rule" "ecs_from_alb" {
   ip_protocol                  = "tcp"
 }
 
-# ECS: reach ECR / CloudWatch / SSM via VPC endpoints
-resource "aws_vpc_security_group_egress_rule" "ecs_to_vpc_endpoints" {
-  security_group_id            = aws_security_group.ecs.id
-  referenced_security_group_id = aws_security_group.vpc_endpoints.id
-  from_port                    = 443
-  to_port                      = 443
-  ip_protocol                  = "tcp"
+# ECS: reach public registries / CloudWatch / SSM via internet
+resource "aws_vpc_security_group_egress_rule" "ecs_to_internet" {
+  security_group_id = aws_security_group.ecs.id
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 443
+  to_port           = 443
+  ip_protocol       = "tcp"
 }
 
 # ECS: reach RDS
@@ -77,8 +77,8 @@ module "alb" {
 
   name     = "${var.prefix}-alb"
   vpc_id   = module.vpc.vpc_id
-  subnets  = module.vpc.private_subnets
-  internal = true
+  subnets  = module.vpc.public_subnets
+  internal = false
 
   security_groups = [aws_security_group.alb.id]
 
@@ -87,6 +87,7 @@ module "alb" {
       protocol    = "HTTP"
       port        = 8000
       target_type = "ip"
+      target_id   = module.vpc.vpc_id
       health_check = {
         enabled  = true
         path     = "/docs"
@@ -235,9 +236,9 @@ resource "aws_ecs_service" "backend" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = module.vpc.private_subnets
+    subnets          = module.vpc.public_subnets
     security_groups  = [aws_security_group.ecs.id]
-    assign_public_ip = false
+    assign_public_ip = true
   }
 
   load_balancer {

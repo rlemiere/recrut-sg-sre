@@ -7,20 +7,6 @@ module "s3_frontend" {
   bucket = "${var.prefix}-frontend-${data.aws_caller_identity.current.account_id}"
 }
 
-resource "aws_cloudfront_vpc_origin" "backend" {
-  vpc_origin_endpoint_config {
-    name                   = "${var.prefix}-backend"
-    arn                    = module.alb.arn
-    http_port              = 80
-    https_port             = 443
-    origin_protocol_policy = "https-only"
-
-    origin_ssl_protocols {
-      items    = ["TLSv1.2"]
-      quantity = 1
-    }
-  }
-}
 
 module "cloudfront" {
   source  = "terraform-aws-modules/cloudfront/aws"
@@ -47,10 +33,11 @@ module "cloudfront" {
     }
     alb-backend = {
       domain_name = local.api_domain
-      vpc_origin_config = {
-        vpc_origin_id            = aws_cloudfront_vpc_origin.backend.id
-        origin_keepalive_timeout = 5
-        origin_read_timeout      = 30
+      custom_origin_config = {
+        http_port              = 80
+        https_port             = 443
+        origin_protocol_policy = "https-only"
+        origin_ssl_protocols   = ["TLSv1.2"]
       }
     }
   }

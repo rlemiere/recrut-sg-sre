@@ -1,6 +1,7 @@
-aws_region = "eu-west-2"
+aws_region  = "eu-west-2"
 dns_zone_id = "Z08854031W54ZHUEPJJMF"
 
-prefix = "rlemiere.sg"
+prefix     = "rlemiere-sg"
+dns_prefix = "rlemiere.sg"
 
-backend_image_url = "docker.io/library/nginx:latest"
+backend_image_uri = "docker.io/library/nginx:latest"

@@ -23,6 +23,7 @@ module "rds" {
 
   manage_master_user_password = false
   password_wo                 = random_password.db_password.result
+  password_wo_version         = 1
 
   multi_az            = false
   availability_zone   = "${var.aws_region}a"

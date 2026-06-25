@@ -9,7 +9,12 @@ variable "dns_zone_id" {
 }
 
 variable "prefix" {
-  description = "Environment prefix (e.g. dev, prod)"
+  description = "Prefix for AWS resource names (e.g. urlshortener-dev)"
+  type        = string
+}
+
+variable "dns_prefix" {
+  description = "DNS subdomain prefix (e.g. dev -> dev.example.com)"
   type        = string
 }
 
