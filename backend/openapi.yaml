@@ -1,0 +1,102 @@
+openapi: 3.0.3
+info:
+  title: URL Shortener
+  description: REST API that shortens URLs and redirects users to the original destination.
+  version: 0.1.0
+
+paths:
+  /links:
+    post:
+      summary: Shorten a URL
+      operationId: shortenLink
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShortenRequest'
+            example:
+              url: https://example.com
+      responses:
+        '201':
+          description: Link successfully shortened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShortenResponse'
+              example:
+                id: aB3kR7mX
+        '422':
+          description: Invalid or malformed URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDetail'
+              example:
+                detail: "Invalid URL 'not-a-url': must use http or https scheme with a valid host"
+
+  /l/{link_id}:
+    get:
+      summary: Redirect to original URL
+      operationId: redirectLink
+      parameters:
+        - name: link_id
+          in: path
+          required: true
+          description: 8-character base62 link identifier
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 8
+            example: aB3kR7mX
+      responses:
+        '302':
+          description: Redirect to the original URL
+          headers:
+            Location:
+              description: The original URL
+              schema:
+                type: string
+                format: uri
+        '404':
+          description: Link not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDetail'
+              example:
+                detail: Link not found
+
+components:
+  schemas:
+    ShortenRequest:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+          description: The URL to shorten. Must use http or https scheme.
+          example: https://example.com
+
+    ShortenResponse:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          minLength: 8
+          maxLength: 8
+          description: 8-character base62 identifier for the shortened link.
+          example: aB3kR7mX
+
+    ErrorDetail:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Human-readable error message.
